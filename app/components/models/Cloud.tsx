@@ -1,7 +1,40 @@
 import { Cloud, Clouds } from "@react-three/drei";
+import { isMobile } from "react-device-detect";
 import * as THREE from "three";
 
 const CloudContainer = () => {
+  if (isMobile) {
+    // Lightweight mobile version: 2 simple clouds
+    return (
+      <Clouds material={THREE.MeshBasicMaterial}
+        position={[0, -5, 0]}
+        frustumCulled={false}>
+        <Cloud seed={1}
+          segments={1}
+          concentrate="inside"
+          bounds={[8, 8, 8]}
+          growth={2}
+          position={[-1, 0, 0]}
+          smallestVolume={1}
+          scale={1.5}
+          volume={1.5}
+          speed={0.15}
+          fade={5}
+          />
+        <Cloud
+          seed={4}
+          segments={1}
+          concentrate="outside"
+          bounds={[8, 12, 10]}
+          growth={2}
+          position={[-8, -8, 4]}
+          smallestVolume={1}
+          scale={1.5}
+          speed={0.15}
+          volume={2}/>
+      </Clouds>);
+  }
+
   return (
     <Clouds material={THREE.MeshBasicMaterial}
       position={[0, -5, 0]}

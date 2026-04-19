@@ -37,7 +37,7 @@ const Projects = () => {
 
   return (
     <group>
-      <Wanderer rotation={new THREE.Euler(0, Math.PI / 6, 0)} scale={new THREE.Vector3(1.5, 1.5, 1.5)} position={new THREE.Vector3(0, -1, -1)}/>
+      <Wanderer rotation={new THREE.Euler(0, Math.PI / 6, 0)} scale={new THREE.Vector3(3.5, 3.5, 3.5)} position={new THREE.Vector3(0, -1, -20)}/>
       <ProjectsCarousel />
       { isActive && isMobile && <TouchPanControls /> }
     </group>

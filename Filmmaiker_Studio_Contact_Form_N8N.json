@@ -1,0 +1,169 @@
+{
+  "name": "FilmmAiker Studio — Lead Enrichment Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "filmmaiker-contact-enrich",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-entry",
+      "name": "Webhook (New Lead)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.website }}",
+        "method": "GET",
+        "options": {
+          "timeout": 10000,
+          "redirect": { "redirect": { "followRedirects": true } },
+          "response": { "response": { "neverError": true } }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; FilmmAikerBot/1.0; +https://filmmaikerstudio.com)"
+            }
+          ]
+        }
+      },
+      "id": "scrape-website",
+      "name": "Scrape Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract textual content from raw HTML (fallback to empty if failed)\nconst webhookBody = $('Webhook (New Lead)').item.json.body;\nconst html = typeof $json.data === 'string' ? $json.data : ($json.body || '');\nconst stripTags = (s) => s.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\nconst titleMatch = html.match(/<title>([^<]*)<\\/title>/i);\nconst descMatch = html.match(/<meta[^>]*name=[\"']description[\"'][^>]*content=[\"']([^\"']*)[\"']/i);\nconst bodyText = stripTags(html).slice(0, 3000);\nreturn {\n  lead: webhookBody,\n  site: {\n    title: titleMatch ? titleMatch[1].trim() : '',\n    description: descMatch ? descMatch[1].trim() : '',\n    bodyText,\n  }\n};"
+      },
+      "id": "extract-site",
+      "name": "Extract Site Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "modelId": { "__rl": true, "mode": "list", "value": "gpt-4o-mini" },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Eres analista comercial de FilmmAiker Studio, una agencia de producción audiovisual con IA. Tu tarea es analizar un lead entrante y proponer cómo abordarlo. DEBES devolver SOLO JSON válido con esta forma exacta: {\"summary\":string, \"sector\":string, \"leadScore\":number, \"priority\":\"alta\"|\"media\"|\"baja\", \"suggestedService\":\"AI Brand Content\"|\"AI Filmmaking\"|\"AI Automation\"|\"AI Trainings\", \"reasoning\":string}. summary: 2-3 frases describiendo el negocio del lead. sector: sector o industria principal. leadScore: 1-10 según encaje con nuestros servicios y calidad del brief. priority: basado en budget, deadline y scoring. suggestedService: el servicio más adecuado."
+            },
+            {
+              "role": "user",
+              "content": "LEAD:\nNombre: {{ $json.lead.name }}\nEmail: {{ $json.lead.email }}\nTeléfono: {{ $json.lead.phone }}\nWeb: {{ $json.lead.website }}\nTipo proyecto solicitado: {{ $json.lead.projectTypeLabel }}\nBudget: {{ $json.lead.budgetLabel }}\nDeadline: {{ $json.lead.deadlineLabel }}\nObjetivo: {{ $json.lead.goal }}\nComentarios: {{ $json.lead.comments }}\n\nWEBSITE:\nTitle: {{ $json.site.title }}\nDescription: {{ $json.site.description }}\nBody (extracto): {{ $json.site.bodyText }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0.3 }
+      },
+      "id": "ai-analysis",
+      "name": "AI Analysis (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [860, 300],
+      "credentials": { "openAiApi": { "id": "REPLACE_WITH_OPENAI_CRED_ID", "name": "OpenAI" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge lead + AI output for downstream nodes\nconst lead = $('Extract Site Text').item.json.lead;\nconst ai = $json.message?.content ? JSON.parse($json.message.content) : $json;\nreturn {\n  notionPageId: lead.notionPageId,\n  lead,\n  ai,\n};"
+      },
+      "id": "merge-ai",
+      "name": "Merge Lead + AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $json.notionPageId }}",
+        "propertiesUi": {
+          "propertyValues": [
+            { "key": "AISummary|rich_text", "textContent": "={{ $json.ai.summary }}" },
+            { "key": "Sector|select", "selectValue": "={{ $json.ai.sector }}" },
+            { "key": "LeadScore|number", "numberValue": "={{ $json.ai.leadScore }}" },
+            { "key": "Priority|select", "selectValue": "={{ $json.ai.priority }}" },
+            { "key": "SuggestedService|select", "selectValue": "={{ $json.ai.suggestedService }}" },
+            { "key": "AIReasoning|rich_text", "textContent": "={{ $json.ai.reasoning }}" }
+          ]
+        }
+      },
+      "id": "notion-update",
+      "name": "Notion — Update Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1300, 200],
+      "credentials": { "notionApi": { "id": "REPLACE_WITH_NOTION_CRED_ID", "name": "Notion" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.lead.email }}",
+        "subject": "Hemos recibido tu brief — FilmmAiker Studio",
+        "emailType": "html",
+        "message": "<div style=\"font-family:Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px\">¡Gracias, {{ $json.lead.name || 'hola' }}!</h2><p>Hemos recibido tu brief para un proyecto de <strong>{{ $json.lead.projectTypeLabel }}</strong>. Nuestro equipo lo revisará junto con un agente de IA que nos ayuda a entender mejor tu contexto.</p><p><strong>Próximo paso:</strong> en menos de 24 horas laborables te contactaremos con una primera aproximación.</p><p>Mientras tanto, si quieres añadir algo, responde a este email.</p><p style=\"margin-top:32px;font-size:13px;color:#666\">— El equipo de FilmmAiker Studio<br/><a href=\"https://filmmaikerstudio.com\" style=\"color:#666\">filmmaikerstudio.com</a></p></div>"
+      },
+      "id": "email-lead",
+      "name": "Email Confirmación al Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1300, 340],
+      "credentials": { "gmailOAuth2": { "id": "REPLACE_WITH_GMAIL_CRED_ID", "name": "Gmail" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "hola@filmmaikerstudio.com",
+        "subject": "🚀 Nuevo lead [{{ $json.ai.priority }}] — {{ $json.lead.name || $json.lead.email }}",
+        "emailType": "html",
+        "message": "<div style=\"font-family:Helvetica,Arial,sans-serif;max-width:640px\"><h2>Nuevo lead web</h2><table style=\"border-collapse:collapse;width:100%\"><tr><td style=\"padding:6px 0;color:#666\">Nombre</td><td>{{ $json.lead.name }}</td></tr><tr><td style=\"padding:6px 0;color:#666\">Email</td><td><a href=\"mailto:{{ $json.lead.email }}\">{{ $json.lead.email }}</a></td></tr><tr><td style=\"padding:6px 0;color:#666\">Teléfono</td><td>{{ $json.lead.phone }}</td></tr><tr><td style=\"padding:6px 0;color:#666\">Web</td><td><a href=\"{{ $json.lead.website }}\" target=\"_blank\">{{ $json.lead.website }}</a></td></tr><tr><td style=\"padding:6px 0;color:#666\">Tipo</td><td>{{ $json.lead.projectTypeLabel }}</td></tr><tr><td style=\"padding:6px 0;color:#666\">Budget</td><td>{{ $json.lead.budgetLabel }}</td></tr><tr><td style=\"padding:6px 0;color:#666\">Deadline</td><td>{{ $json.lead.deadlineLabel }}</td></tr></table><h3 style=\"margin-top:20px\">Análisis IA</h3><p><strong>Score:</strong> {{ $json.ai.leadScore }}/10 — <strong>Prioridad:</strong> {{ $json.ai.priority }} — <strong>Servicio sugerido:</strong> {{ $json.ai.suggestedService }}</p><p><strong>Sector:</strong> {{ $json.ai.sector }}</p><p><strong>Resumen:</strong> {{ $json.ai.summary }}</p><p><strong>Razonamiento:</strong> {{ $json.ai.reasoning }}</p><h3 style=\"margin-top:20px\">Objetivo del cliente</h3><blockquote style=\"border-left:3px solid #ccc;margin:0;padding:8px 16px;color:#333\">{{ $json.lead.goal }}</blockquote><p style=\"margin-top:24px;font-size:13px;color:#666\">Página en Notion: {{ $json.notionPageId }}</p></div>"
+      },
+      "id": "email-team",
+      "name": "Notificación al Equipo",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1300, 480],
+      "credentials": { "gmailOAuth2": { "id": "REPLACE_WITH_GMAIL_CRED_ID", "name": "Gmail" } }
+    }
+  ],
+  "connections": {
+    "Webhook (New Lead)": {
+      "main": [[{ "node": "Scrape Website", "type": "main", "index": 0 }]]
+    },
+    "Scrape Website": {
+      "main": [[{ "node": "Extract Site Text", "type": "main", "index": 0 }]]
+    },
+    "Extract Site Text": {
+      "main": [[{ "node": "AI Analysis (OpenAI)", "type": "main", "index": 0 }]]
+    },
+    "AI Analysis (OpenAI)": {
+      "main": [[{ "node": "Merge Lead + AI", "type": "main", "index": 0 }]]
+    },
+    "Merge Lead + AI": {
+      "main": [[
+        { "node": "Notion — Update Page", "type": "main", "index": 0 },
+        { "node": "Email Confirmación al Lead", "type": "main", "index": 0 },
+        { "node": "Notificación al Equipo", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "description": "Lead enrichment pipeline for FilmmAiker Studio contact form. Receives webhook from Next.js API route (after Notion page already exists), scrapes the lead's website, runs IA analysis (summary, sector, score, priority, suggested service), updates the Notion page with enrichment, and sends confirmation emails to the lead and the team."
+  }
+}

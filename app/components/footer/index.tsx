@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { isMobile } from "react-device-detect";
 import * as THREE from "three";
 import { FOOTER_LINKS } from "../../constants";
+import { useContactStore } from "../../stores";
 import { FooterLink } from "../../types";
 
 const FooterLinkItem = ({ link }: { link: FooterLink }) => {
@@ -12,7 +13,16 @@ const FooterLinkItem = ({ link }: { link: FooterLink }) => {
   const [hovered, setHovered] = useState(false);
   const onPointerOver = () => setHovered(true);
   const onPointerOut = () => setHovered(false);
-  const onClick = () => window.open(link.url, '_blank');
+  const setContactOpen = useContactStore((state) => state.setContactOpen);
+
+  const onClick = () => {
+    if (link.name === 'Contacto') {
+      setContactOpen(true);
+    } else {
+      window.open(link.url, '_blank');
+    }
+  };
+
   const onPointerMove = (e: MouseEvent) => {
     if (isMobile) return;
     const hoverDiv = document.getElementById(`footer-link-${link.name}`);
@@ -107,7 +117,7 @@ const Footer = () => {
 
   return (
     <group position={[0, -44, 18]} rotation={[-Math.PI / 2, 0, 0]} ref={groupRef}>
-      <group position={[isMobile ? -2.5 : -4, 0, 0]}>
+      <group position={[isMobile ? -1.1 : -2, -1.5, 0]}>
         { getLinks() }
       </group>
     </group>

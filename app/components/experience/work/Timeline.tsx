@@ -1,4 +1,4 @@
-import { Box, Edges, Line, Text, TextProps } from "@react-three/drei";
+import { Box, Edges, Html, Line, Text, TextProps } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { usePortalStore } from "@stores";
 import gsap from "gsap";
@@ -6,13 +6,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isMobile } from "react-device-detect";
 import * as THREE from "three";
 
+import { useContactStore } from "@/app/stores";
 import { WORK_TIMELINE } from "@constants";
 import { WorkTimelinePoint } from "@types";
 
 const reusableLeft = new THREE.Vector3(-0.3, 0, -0.1);
 const reusableRight = new THREE.Vector3(0.3, 0, -0.1);
 
-const TimelinePoint = ({ point, diff }: { point: WorkTimelinePoint, diff: number }) => {
+const TimelinePoint = ({ point, diff, isLast, isActive }: { point: WorkTimelinePoint, diff: number, isLast: boolean, isActive: boolean }) => {
+  const setContactOpen = useContactStore((state) => state.setContactOpen);
+
   const getPoint = useMemo(() => {
     switch (point.position) {
       case 'left': return reusableLeft;
@@ -37,6 +40,8 @@ const TimelinePoint = ({ point, diff }: { point: WorkTimelinePoint, diff: number
     maxWidth: 3,
   }), [textProps]);
 
+  const showCTA = isLast && diff < 0.3 && isActive;
+
   return (
     <group position={point.point} scale={isMobile ? 0.35 : 0.6}>
       <Box args={[0.2, 0.2, 0.2]} position={[0, 0, -0.1]} scale={[1 - diff, 1 - diff, 1 - diff]}>
@@ -45,16 +50,52 @@ const TimelinePoint = ({ point, diff }: { point: WorkTimelinePoint, diff: number
       </Box>
       <group>
         <group position={getPoint}>
-          <Text {...textProps} fontSize={0.3} position={[-diff / 2, 0, 0]}>
+          <Text {...textProps} fontSize={0.25} position={[-diff / 2, 0.1, 0]}>
             {point.year}
           </Text>
-          <group position={[0, -0.5, 0]}>
-            <Text {...titleProps} fontSize={0.6} maxWidth={3} position={[0, -diff / 2, 0]}>
+          <group position={[0, -0.4, 0]}>
+            <Text {...titleProps} fontSize={0.5} maxWidth={4} anchorY="top" position={[0, -diff / 2, 0]}>
               {point.title}
             </Text>
-            <Text {...textProps} fontSize={0.2} position={[0, -0.4 - diff, 0]}>
+            <Text {...textProps} fontSize={0.18} position={[0, -0.85 - diff, 0]}>
               {point.subtitle}
             </Text>
+            {showCTA && (
+              <Html
+                position={[0, -2.6, 0]}
+                center
+                style={{ pointerEvents: 'auto' }}
+              >
+                <button
+                  onClick={() => setContactOpen(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: 'white',
+                    padding: '12px 32px',
+                    borderRadius: '50px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  Solicitar Propuesta →
+                </button>
+              </Html>
+            )}
           </group>
         </group>
       </group>
@@ -137,7 +178,8 @@ const Timeline = ({ progress }: { progress: number }) => {
       <group ref={groupRef}>
         {visibleTimelinePoints.map((point, i) => {
           const diff = Math.min(2 * Math.max(i - (progress * (timeline.length - 1)), 0), 1);
-          return <TimelinePoint point={point} key={i} diff={diff} />;
+          const isLast = i === timeline.length - 1;
+          return <TimelinePoint point={point} key={i} diff={diff} isLast={isLast} isActive={isActive} />;
         })}
       </group>
     </group>
@@ -145,3 +187,4 @@ const Timeline = ({ progress }: { progress: number }) => {
 };
 
 export default Timeline;
+

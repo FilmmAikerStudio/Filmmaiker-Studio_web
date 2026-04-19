@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn rsync -avz --exclude "node_modules" --exclude ".git" --exclude ".next" /Users/sebitas/Documents/Filmmaiking/WEB/FilmmaikerStudio3D/ root@46.202.171.141:/var/www/FilmmaikerStudio3D/
+expect {
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "M7p&aQ9-hL3(vN@x\r"
+    }
+}
+expect eof
+
+spawn ssh root@46.202.171.141 "cd /var/www/FilmmaikerStudio3D && npm install && npm run build && pm2 restart filmmaiker"
+expect {
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "M7p&aQ9-hL3(vN@x\r"
+    }
+}
+expect eof

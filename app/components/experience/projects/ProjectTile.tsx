@@ -17,8 +17,12 @@ interface ProjectTileProps {
   onClick: () => void;
 }
 
+const isValidUrl = (url?: string): url is string =>
+  !!url && url !== '#' && (url.startsWith('http') || url.startsWith('/'));
+
 const ProjectTile = ({ project, index, position, rotation, activeId, onClick }: ProjectTileProps) => {
   const projectRef = useRef<THREE.Group>(null);
+  const buttonGroupRef = useRef<THREE.Group>(null);
   const hoverAnimRef = useRef<gsap.core.Timeline | null>(null);
   const [hovered, setHovered] = useState(false);
   const isProjectSectionActive = usePortalStore((state) => state.activePortalId === "projects");
@@ -39,7 +43,10 @@ const ProjectTile = ({ project, index, position, rotation, activeId, onClick }: 
     if (!projectRef.current) return;
     hoverAnimRef.current?.kill();
 
-    const [mesh, title, dateGroup, textBox, button] = projectRef.current.children;
+    const children = projectRef.current.children;
+    const mesh = children[0];
+    const title = children[1];
+    const textBox = children[2];
 
     hoverAnimRef.current = gsap.timeline();
     hoverAnimRef.current
@@ -50,19 +57,17 @@ const ProjectTile = ({ project, index, position, rotation, activeId, onClick }: 
         y: hovered ? 1.3 : 1,
         z: hovered ? 1.3 : 1,
       }, 0)
-      .to(title.position, { y: hovered ? 0.7 : -0.8 }, 0)
-      .to(textBox.position, { y: hovered ? 0.7 : 0 }, 0)
-      // .to(textBox.scale, { y: hovered ? 1 : 0, x: hovered ? 1 : 0 }, 0)
+      .to(title.position, { y: hovered ? 1.2 : -0.8 }, 0)
+      .to(textBox.position, { y: hovered ? 1.2 : 0 }, 0)
       .to(textBox, { fillOpacity: hovered ? 1 : 0, duration: 0.4 }, 0)
-      .to(dateGroup.position, { y: hovered ? 2.6 : 1.4 }, 0)
       .to(mesh.scale, { y: hovered ? 2 : 1 }, 0)
       .to((mesh as THREE.Mesh).material, { opacity: hovered ? 0.95 : 0.3 }, 0)
-      .to(mesh.position, { y: hovered ? 1 : 0 }, 0);
+      .to(mesh.position, { y: hovered ? 1.5 : 0 }, 0);
 
-    if (project.url) {
+    if (isValidUrl(project.url) && buttonGroupRef.current) {
       hoverAnimRef.current
-        .to(button.scale, { y: hovered ? 1 : 0, x: hovered ? 1 : 0 }, 0)
-        .to(button.position, { z: hovered ? 0.3 : -1 }, 0);
+        .to(buttonGroupRef.current.scale, { y: hovered ? 1 : 0, x: hovered ? 1 : 0 }, 0)
+        .to(buttonGroupRef.current.position, { z: hovered ? 0.3 : -1 }, 0);
     }
   }, [hovered]);
 
@@ -84,7 +89,7 @@ const ProjectTile = ({ project, index, position, rotation, activeId, onClick }: 
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    if (!project.url) return;
+    if (!isValidUrl(project.url)) return;
     const button = e.eventObject;
     gsap.to(button.position, { z: 0, duration: 0.1 })
       .then(() => gsap.to(button.position, { z: 0.3, duration: 0.3 }));
@@ -100,44 +105,33 @@ const ProjectTile = ({ project, index, position, rotation, activeId, onClick }: 
       onPointerOut={() => !isMobile && isProjectSectionActive && setHovered(false)}>
       <group ref={projectRef}>
         <mesh>
-          <planeGeometry args={[4.2, 2, 1]} />
+          <planeGeometry args={[5.5, 3, 1]} />
           <meshBasicMaterial color="#FFF" transparent opacity={0.3}/>
           {/* <meshPhysicalMaterial transmission={1} roughness={0.3} /> */}
           <Edges color="black" lineWidth={1.5} />
         </mesh>
         <Text
           {...titleProps}
-          position={[-1.9, -0.8, 0.101]}
+          position={[-2.5, -0.8, 0.101]}
           anchorX="left"
           anchorY="bottom"
-          maxWidth={4}
-          fontSize={0.8}>
+          maxWidth={5.2}
+          lineHeight={1}
+          fontSize={0.75}>
           {project.title}
         </Text>
-        <group position={[-1.25, 1.4, 0.01]}>
-          <mesh>
-            <planeGeometry args={[1.7, 0.4, 1]} />
-            <meshBasicMaterial color="#777" opacity={0} wireframe />
-            <Edges color="black" lineWidth={1} />
-          </mesh>
-          <Text
-            {...subtitleProps}
-            position={[-0.7, 0.2, 0]}
-            fontSize={0.3}>
-            {project.date.toUpperCase()}
-          </Text>
-        </group>
+
         <Text
           {...subtitleProps}
-          maxWidth={3.8}
-          position={[-1.9, 2.3, 0.1]}
-          // scale={[0, 0, 1]}
-          fontSize={0.2}>
+          maxWidth={5.2}
+          position={[-2.5, 3, 0.1]}
+          fontSize={0.24}>
           {project.subtext}
         </Text>
-        {project.url && (
+        {isValidUrl(project.url) && (
           <group
-            position={[1.3, -0.6, -1]}
+            ref={buttonGroupRef}
+            position={[1.8, -0.8, -1]}
             scale={[0, 0, 1]}
             onClick={handleClick}
             onPointerOver={() => document.body.style.cursor = 'pointer'}

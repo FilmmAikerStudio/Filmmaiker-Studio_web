@@ -2,6 +2,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import localFont from 'next/font/local';
 import "./globals.css";
+import ThemeSync from "./components/common/ThemeSync";
 
 const soriaFont = localFont({
   src: "../public/soria-font.ttf",
@@ -14,12 +15,13 @@ const vercettiFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Mohit Virli ✌️",
-  description: "A frontend developer by profession, a creative at heart.",
-  keywords: "Mohit Virli, Frontend Engineer, React Developer, Three.js, Creative Developer, Web Development, Angular, JavaScript, TypeScript, Portfolio",
-  authors: [{ name: "Mohit Virli" }],
-  creator: "Mohit Virli",
-  publisher: "Mohit Virli",
+  metadataBase: new URL('https://www.filmmaikerstudio.com'),
+  title: "Filmmaiker Studio",
+  description: "Una agencia de producción 3D, Video, e IA inmersiva.",
+  keywords: "Filmmaiker Studio, Producción de Video, Agencia IA, Web 3D, Experiencias Digitales",
+  authors: [{ name: "Filmmaiker Studio" }],
+  creator: "Filmmaiker Studio",
+  publisher: "Filmmaiker Studio",
   formatDetection: {
     email: false,
     address: false,
@@ -36,20 +38,17 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Mohit Virli - Frontend Engineer",
-    description: "Frontend engineer by profession, creative at heart.",
-    url: "https://mohitvirli.github.io",
-    siteName: "Mohit Virli's Portfolio",
-    locale: "en_US",
+    title: "Filmmaiker Studio - Experiencias Inmersivas",
+    description: "Una agencia de producción 3D, Video, e IA inmersiva.",
+    url: "https://www.filmmaikerstudio.com",
+    siteName: "Filmmaiker Studio",
+    locale: "es_ES",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mohit Virli - Frontend Engineer",
-    description: "Frontend engineer by profession, creative at heart.",
-  },
-  verification: {
-    google: "GsRYY-ivL0F_VKkfs5KAeToliqz0gCrRAJKKmFkAxBA",
+    title: "Filmmaiker Studio - Experiencias Inmersivas",
+    description: "Una agencia de producción 3D, Video, e IA inmersiva.",
   },
 };
 
@@ -66,10 +65,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="overscroll-y-none">
+    <html lang="es" className="overscroll-y-none">
       <body
         className={`${soriaFont.variable} ${vercettiFont.variable} font-sans antialiased`}
       >
+        <ThemeSync />
         {children}
       </body>
       <GoogleAnalytics gaId={'G-7WD4HM3XRE'}/>

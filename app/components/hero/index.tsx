@@ -5,6 +5,7 @@ import { Text } from "@react-three/drei";
 import { useProgress } from "@react-three/drei";
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
+import { isMobile } from "react-device-detect";
 import * as THREE from "three";
 import CloudContainer from "../models/Cloud";
 import StarsContainer from "../models/Stars";
@@ -35,11 +36,11 @@ const Hero = () => {
 
   return (
     <>
-      <Text position={[0, 2, -10]} {...fontProps} ref={titleRef}>Hi, I am Mohit Virli.</Text>
+      <Text position={[0, 2, -10]} {...fontProps} ref={titleRef}>Filmmaiker Studio</Text>
       <StarsContainer />
       <CloudContainer/>
       <group position={[0, -25, 5.69]}>
-        <pointLight castShadow position={[1, 1, -2.5]} intensity={60} distance={10}/>
+        <pointLight castShadow={!isMobile} position={[1, 1, -2.5]} intensity={60} distance={10}/>
         <WindowModel receiveShadow/>
         <TextWindow/>
       </group>
